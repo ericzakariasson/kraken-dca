@@ -1,0 +1,24 @@
+name: Run Node.js Script Daily
+
+on:
+  schedule:
+    # This cron job runs every day at 12:00 UTC
+    - cron: "0 12 * * *"
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Run script
+        run: npx tsx src/index.ts
+        env:
+          KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
+          KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
+          DAILY_PURCHASE_AMOUNT_EUR: ${{ vars.DAILY_PURCHASE_AMOUNT_EUR }}
