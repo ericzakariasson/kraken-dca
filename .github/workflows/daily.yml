@@ -1,6 +1,7 @@
 name: Run Node.js Script Daily
 
 on:
+  workflow_dispatch:
   schedule:
     # This cron job runs every day at 12:00 UTC
     - cron: "0 12 * * *"
