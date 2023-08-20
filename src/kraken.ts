@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "crypto";
 import { stringify } from "qs";
+import { BaseSchema, array, never, object, string, union } from "valibot";
 import { env } from "./env";
 
 function generateMessageSignature(
@@ -57,9 +58,20 @@ export async function fetchPrivate(
     throw new Error(`Request to ${url} failed`);
   }
 
-  const { result, error } = await response.json();
+  return await response.json();
+}
 
-  return { result, error };
+export function createKrakenResponseSchema<T extends BaseSchema>(schema: T) {
+  return union([
+    object({
+      error: array(string()),
+      result: never(),
+    }),
+    object({
+      error: array(never()),
+      result: schema,
+    }),
+  ]);
 }
 
 export async function fetchPublic(url: string) {
@@ -70,6 +82,5 @@ export async function fetchPublic(url: string) {
     throw new Error(`Request to ${url} failed`);
   }
 
-  const { result, error } = await response.json();
-  return { result, error };
+  return await response.json();
 }

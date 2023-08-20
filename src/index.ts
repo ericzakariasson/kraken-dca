@@ -1,46 +1,55 @@
 import "dotenv/config";
 
+import { array, coerce, number, object, record, string, tuple } from "valibot";
 import { env } from "./env";
-import { fetchPrivate, fetchPublic } from "./kraken";
+import {
+  createKrakenResponseSchema,
+  fetchPrivate,
+  fetchPublic,
+} from "./kraken";
+import { publishPurchasedEvent } from "./logsnag";
 
 const ASSET_PAIRS = ["ETHEUR", "BTCEUR"];
+
+const numberSchema = coerce(number(), Number);
+
+const tickerInfoSchema = object({
+  p: tuple([numberSchema, numberSchema]),
+});
+
+const tickerInfoResponseSchema = createKrakenResponseSchema(
+  record(tickerInfoSchema)
+);
 
 async function getAssetPairFiatRate(pair: string) {
   const params = new URLSearchParams({
     pair,
   });
 
-  const { result, error } = await fetchPublic(
-    `0/public/Ticker?${params.toString()}`
-  );
+  const response = await fetchPublic(`0/public/Ticker?${params.toString()}`);
+  const { result, error } = tickerInfoResponseSchema.parse(response);
 
-  if (error && error.length > 0) {
+  if (error.length > 0) {
     console.error(error);
     throw new Error(error.join(", "));
   }
 
-  if (!result) {
-    throw new Error("No result in ticker information response");
+  if (result) {
+    const [today] = Object.values(result)[0].p;
+    return today;
   }
 
-  const data = Object.values(result).at(0);
-
-  if (!data || typeof data !== "object") {
-    throw new Error("No data in ticker information result");
-  }
-
-  if (!("p" in data) || !Array.isArray(data.p)) {
-    throw new Error("No p in ticker information result");
-  }
-
-  const [today] = data.p ?? [];
-
-  if (!today) {
-    throw new Error("No today price in ticker information result");
-  }
-
-  return Number(today);
+  throw new Error("Unknown error");
 }
+
+const addOrderResponseSchema = createKrakenResponseSchema(
+  object({
+    descr: object({
+      order: string(),
+    }),
+    txid: array(string()),
+  })
+);
 
 async function purchaseAssetPair(pair: string, volume: number) {
   const payload = {
@@ -50,22 +59,31 @@ async function purchaseAssetPair(pair: string, volume: number) {
     volume: volume.toString(),
   };
 
-  const { result, error } = await fetchPrivate("/0/private/AddOrder", payload);
+  const response = await fetchPrivate("/0/private/AddOrder", payload);
+  const { result, error } = addOrderResponseSchema.parse(response);
 
-  if (error && error.length > 0) {
+  if (error.length > 0) {
     console.error(error);
     throw new Error(error.join(", "));
   }
 
-  if (!result) {
-    throw new Error("No result in add order response");
-  }
-
-  if (result.txid?.length === 0) {
+  if (result.txid.length === 0) {
     throw new Error("No txid in add order result");
   }
 
   return result;
+}
+
+function transformTickerName(ticker: string) {
+  if (["XBT", "BTC"].includes(ticker)) {
+    return "Bitcoin";
+  }
+
+  if (ticker === "ETH") {
+    return "Ethereum";
+  }
+
+  return ticker;
 }
 
 async function main() {
@@ -78,6 +96,16 @@ async function main() {
 
     const result = await purchaseAssetPair(pair, purchaseVolume);
     console.info(`Purchased ${purchaseVolume} of ${pair}`, result);
+
+    try {
+      await publishPurchasedEvent({
+        currency: transformTickerName(pair.slice(0, 3)),
+        amount: purchaseVolume.toFixed(6),
+        rate: fiatRate.toFixed(0),
+      });
+    } catch (error) {
+      console.error("Failed to publish purchased event", error);
+    }
   }
 }
 
