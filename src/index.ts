@@ -147,7 +147,7 @@ function calculateDailyPurchaseAmount(
 }
 
 async function main() {
-  const nextPurchaseDate = getNextDayOfMonth(15);
+  const nextPurchaseDate = getNextDayOfMonth(env.PURCHASE_DAY_OF_MONTH);
   const daysLeft = daysUntilNextPurchase(nextPurchaseDate);
   console.info(
     `Next purchase date: ${nextPurchaseDate}. Days left: ${daysLeft}`
