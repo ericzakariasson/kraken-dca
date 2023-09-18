@@ -23,4 +23,4 @@ jobs:
           KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
           KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
           LOGSNAG_TOKEN: ${{ secrets.LOGSNAG_TOKEN }}
-          DAILY_PURCHASE_AMOUNT_EUR: ${{ vars.DAILY_PURCHASE_AMOUNT_EUR }}
+          PURCHASE_DAY_OF_MONTH: ${{ vars.PURCHASE_DAY_OF_MONTH }}
