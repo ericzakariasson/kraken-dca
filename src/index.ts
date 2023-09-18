@@ -10,7 +10,7 @@ import {
 import { publishPurchasedEvent } from "./logsnag";
 
 const ASSET_PAIRS = [
-  { pair: "ETHEUR", min: 0.001 },
+  { pair: "ETHEUR", min: 0.01 },
   { pair: "BTCEUR", min: 0.0001 },
 ];
 
