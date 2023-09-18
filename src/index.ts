@@ -17,6 +17,31 @@ const tickerInfoSchema = object({
   p: tuple([numberSchema, numberSchema]),
 });
 
+const accountBalanceResponseSchema = createKrakenResponseSchema(
+  record(numberSchema)
+);
+
+async function getAccountBalances() {
+  const response = await fetchPrivate("/0/private/Balance", {});
+  const { result, error } = accountBalanceResponseSchema.parse(response);
+
+  if (error.length > 0) {
+    console.error(error);
+    throw new Error(error.join(", "));
+  }
+
+  if (result) {
+    return result;
+  }
+
+  throw new Error("Unknown error");
+}
+
+async function getEurBalance() {
+  const balances = await getAccountBalances();
+  return balances.ZEUR;
+}
+
 const tickerInfoResponseSchema = createKrakenResponseSchema(
   record(tickerInfoSchema)
 );
@@ -86,12 +111,59 @@ function transformTickerName(ticker: string) {
   return ticker;
 }
 
+function getNextDayOfMonth(day: number): Date {
+  const date = new Date();
+  date.setDate(day);
+  date.setDate(date.getDate() + 1);
+  return date;
+}
+
+function daysUntilNextPurchase(nextPurchaseDate: Date): number {
+  const currentDate = new Date();
+  const currentDay = currentDate.getDate();
+  const nextPurchaseDay = nextPurchaseDate.getDate();
+
+  if (nextPurchaseDay >= currentDay) {
+    return nextPurchaseDay - currentDay;
+  } else {
+    return (
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate() -
+      currentDay +
+      nextPurchaseDay
+    );
+  }
+}
+
+function calculateDailyPurchaseAmount(
+  totalBalance: number,
+  daysLeft: number,
+  assetPairsCount: number
+) {
+  return totalBalance / (daysLeft * assetPairsCount);
+}
+
 async function main() {
+  const nextPurchaseDate = getNextDayOfMonth(15);
+  const daysLeft = daysUntilNextPurchase(nextPurchaseDate);
+  const euroBalance = await getEurBalance();
+
+  const dailyPurchaseAmount = calculateDailyPurchaseAmount(
+    euroBalance,
+    daysLeft,
+    ASSET_PAIRS.length
+  );
+
+  // TODO: handle case when daily purchase amount is less than minimum order amount
+
   for (const pair of ASSET_PAIRS) {
     const fiatRate = await getAssetPairFiatRate(pair);
     console.info(`Fiat rate for ${pair}: ${fiatRate}`);
 
-    const purchaseVolume = Number(env.DAILY_PURCHASE_AMOUNT_EUR) / fiatRate;
+    const purchaseVolume = dailyPurchaseAmount / fiatRate;
     console.info(`Purchase volume for ${pair}: ${purchaseVolume}`);
 
     const result = await purchaseAssetPair(pair, purchaseVolume);
