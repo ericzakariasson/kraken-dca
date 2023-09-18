@@ -149,12 +149,20 @@ function calculateDailyPurchaseAmount(
 async function main() {
   const nextPurchaseDate = getNextDayOfMonth(15);
   const daysLeft = daysUntilNextPurchase(nextPurchaseDate);
+  console.info(
+    `Next purchase date: ${nextPurchaseDate}. Days left: ${daysLeft}`
+  );
+
   const euroBalance = await getEurBalance();
 
   const dailyPurchaseAmount = calculateDailyPurchaseAmount(
     euroBalance,
     daysLeft,
     ASSET_PAIRS.length
+  );
+
+  console.info(
+    `Daily purchase amount: ${dailyPurchaseAmount} (${ASSET_PAIRS.length} pairs)`
   );
 
   // TODO: handle case when daily purchase amount is less than minimum order amount
