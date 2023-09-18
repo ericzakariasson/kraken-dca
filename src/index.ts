@@ -9,7 +9,10 @@ import {
 } from "./kraken";
 import { publishPurchasedEvent } from "./logsnag";
 
-const ASSET_PAIRS = ["ETHEUR", "BTCEUR"];
+const ASSET_PAIRS = [
+  { pair: "ETHEUR", min: 0.01 },
+  { pair: "BTCEUR", min: 0.0001 },
+];
 
 const numberSchema = coerce(number(), Number);
 
@@ -167,12 +170,19 @@ async function main() {
 
   // TODO: handle case when daily purchase amount is less than minimum order amount
 
-  for (const pair of ASSET_PAIRS) {
+  for (const { pair, min } of ASSET_PAIRS) {
     const fiatRate = await getAssetPairFiatRate(pair);
     console.info(`Fiat rate for ${pair}: ${fiatRate}`);
 
     const purchaseVolume = dailyPurchaseAmount / fiatRate;
     console.info(`Purchase volume for ${pair}: ${purchaseVolume}`);
+
+    if (purchaseVolume < min) {
+      console.info(
+        `Purchase volume for ${pair} is less than minimum order amount (${min}). Skipping.`
+      );
+      continue;
+    }
 
     const result = await purchaseAssetPair(pair, purchaseVolume);
     console.info(`Purchased ${purchaseVolume} of ${pair}`, result);
