@@ -10,7 +10,7 @@ import {
 import { publishPurchasedEvent } from "./logsnag";
 
 const ASSET_PAIRS = [
-  { pair: "ETHEUR", min: 0.01 },
+  { pair: "ETHEUR", min: 0.001 },
   { pair: "BTCEUR", min: 0.0001 },
 ];
 
@@ -146,7 +146,7 @@ function calculateDailyPurchaseAmount(
   daysLeft: number,
   assetPairsCount: number
 ) {
-  return totalBalance / (daysLeft * assetPairsCount);
+  return Math.floor(totalBalance / (daysLeft * assetPairsCount));
 }
 
 async function main() {
@@ -168,8 +168,6 @@ async function main() {
     `Daily purchase amount: ${dailyPurchaseAmount} (${ASSET_PAIRS.length} pairs)`
   );
 
-  // TODO: handle case when daily purchase amount is less than minimum order amount
-
   for (const { pair, min } of ASSET_PAIRS) {
     const fiatRate = await getAssetPairFiatRate(pair);
     console.info(`Fiat rate for ${pair}: ${fiatRate}`);
@@ -190,8 +188,7 @@ async function main() {
     try {
       await publishPurchasedEvent({
         currency: transformTickerName(pair.slice(0, 3)),
-        amount: purchaseVolume.toFixed(6),
-        rate: fiatRate.toFixed(0),
+        euroAmount: dailyPurchaseAmount.toFixed(2),
       });
     } catch (error) {
       console.error("Failed to publish purchased event", error);

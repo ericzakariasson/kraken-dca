@@ -8,17 +8,15 @@ export const logsnag = new LogSnag({
 
 export async function publishPurchasedEvent({
   currency,
-  amount,
-  rate,
+  euroAmount,
 }: {
   currency: string;
-  amount: string;
-  rate: string;
+  euroAmount: string;
 }) {
   return logsnag.publish({
     channel: "trading",
     event: `${currency} Purchased`,
-    description: `${amount} at €${rate}`,
+    description: `¢ ${euroAmount}`,
     icon: "💸",
     tags: {
       currency,
